@@ -1,0 +1,13 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+
+## Logs
+*.log
+
+## OS / editor
+.vs/
+.vscode/*
+!.vscode/extensions.json
