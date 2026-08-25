@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Products</title>
+</head>
+<body>
+  <h1>Products</h1>
+  <p>
+    <a href="/order.html">Place an order</a> |
+    <a href="/history.html">Order history</a>
+  </p>
+
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Id</th>
+        <th>Name</th>
+        <th>SKU</th>
+        <th>Description</th>
+        <th>Price</th>
+        <th>Stock Quantity</th>
+      </tr>
+    </thead>
+    <tbody id="products-body">
+      <tr><td colspan="6">Loading...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    fetch('/api/products')
+      .then(response => response.json())
+      .then(products => {
+        const body = document.getElementById('products-body');
+        body.innerHTML = '';
+
+        if (products.length === 0) {
+          body.innerHTML = '<tr><td colspan="6">No products found.</td></tr>';
+          return;
+        }
+
+        products.forEach(p => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${p.id}</td>
+            <td>${p.name}</td>
+            <td>${p.sku}</td>
+            <td>${p.description ?? ''}</td>
+            <td>${p.price.toFixed(2)}</td>
+            <td>${p.stockQuantity}</td>
+          `;
+          body.appendChild(row);
+        });
+      })
+      .catch(err => {
+        document.getElementById('products-body').innerHTML =
+          `<tr><td colspan="6">Failed to load products: ${err}</td></tr>`;
+      });
+  </script>
+</body>
+</html>

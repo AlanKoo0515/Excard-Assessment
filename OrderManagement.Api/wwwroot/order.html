@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Place Order</title>
+</head>
+<body>
+  <h1>Place an Order</h1>
+  <p>
+    <a href="/index.html">Products</a> |
+    <a href="/history.html">Order history</a>
+  </p>
+
+  <h2>Add a product</h2>
+  <form id="add-item-form">
+    <label for="product-select">Product:</label>
+    <select id="product-select" required></select>
+
+    <label for="quantity-input">Quantity:</label>
+    <input type="number" id="quantity-input" min="1" step="1" value="1" required>
+
+    <button type="submit">Add to order</button>
+    <span id="add-item-error" style="color:red;"></span>
+  </form>
+
+  <h2>Current order</h2>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Quantity</th>
+        <th>Unit Price</th>
+        <th>Line Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="cart-body">
+      <tr><td colspan="5">No items yet.</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    <button id="submit-order-btn" disabled>Submit order</button>
+    <span id="submit-status"></span>
+  </p>
+
+  <script>
+    let products = [];
+    let cart = []; // { productId, name, price, quantity }
+
+    const productSelect = document.getElementById('product-select');
+    const quantityInput = document.getElementById('quantity-input');
+    const addItemForm = document.getElementById('add-item-form');
+    const addItemError = document.getElementById('add-item-error');
+    const cartBody = document.getElementById('cart-body');
+    const submitBtn = document.getElementById('submit-order-btn');
+    const submitStatus = document.getElementById('submit-status');
+
+    function loadProducts() {
+      return fetch('/api/products')
+        .then(res => res.json())
+        .then(data => {
+          products = data;
+          productSelect.innerHTML = products
+            .map(p => `<option value="${p.id}">${p.name} (${p.sku}) - ${p.price.toFixed(2)}</option>`)
+            .join('');
+        });
+    }
+
+    function renderCart() {
+      if (cart.length === 0) {
+        cartBody.innerHTML = '<tr><td colspan="5">No items yet.</td></tr>';
+        submitBtn.disabled = true;
+        return;
+      }
+
+      cartBody.innerHTML = '';
+      cart.forEach((item, index) => {
+        const row = document.createElement('tr');
+        const lineTotal = (item.price * item.quantity).toFixed(2);
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>${item.quantity}</td>
+          <td>${item.price.toFixed(2)}</td>
+          <td>${lineTotal}</td>
+          <td><button type="button" data-index="${index}" class="remove-btn">Remove</button></td>
+        `;
+        cartBody.appendChild(row);
+      });
+
+      submitBtn.disabled = false;
+    }
+
+    cartBody.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove-btn')) {
+        const index = Number(e.target.dataset.index);
+        cart.splice(index, 1);
+        renderCart();
+      }
+    });
+
+    addItemForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      addItemError.textContent = '';
+
+      const productId = Number(productSelect.value);
+      const quantity = Number(quantityInput.value);
+
+      // Client-side validation: product must be selected, quantity must be a
+      // positive whole number.
+      if (!productId) {
+        addItemError.textContent = 'Please select a product.';
+        return;
+      }
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        addItemError.textContent = 'Quantity must be a positive whole number.';
+        return;
+      }
+
+      const product = products.find(p => p.id === productId);
+      if (!product) {
+        addItemError.textContent = 'Selected product no longer exists.';
+        return;
+      }
+
+      const existing = cart.find(item => item.productId === productId);
+      const alreadyInCart = existing ? existing.quantity : 0;
+
+      if (alreadyInCart + quantity > product.stockQuantity) {
+        addItemError.textContent =
+          `Only ${product.stockQuantity} in stock` +
+          (alreadyInCart > 0 ? ` (${alreadyInCart} already in this order).` : '.');
+        return;
+      }
+
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        cart.push({ productId, name: product.name, price: product.price, quantity });
+      }
+
+      renderCart();
+      quantityInput.value = 1;
+    });
+
+    submitBtn.addEventListener('click', () => {
+      if (cart.length === 0) return;
+
+      // Guard against duplicate submissions from a double-click / slow network:
+      // disable the button immediately so a second click can't fire a second request.
+      submitBtn.disabled = true;
+      submitStatus.textContent = 'Submitting...';
+
+      const payload = {
+        items: cart.map(item => ({ productId: item.productId, quantity: item.quantity }))
+      };
+
+      fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || body.title || 'Failed to submit order.');
+          }
+          return res.json();
+        })
+        .then((order) => {
+          submitStatus.textContent = `Order #${order.id} submitted successfully.`;
+          cart = [];
+          renderCart();
+        })
+        .catch((err) => {
+          submitStatus.textContent = `Error: ${err.message}`;
+          submitBtn.disabled = false;
+        });
+    });
+
+    loadProducts();
+    renderCart();
+  </script>
+</body>
+</html>

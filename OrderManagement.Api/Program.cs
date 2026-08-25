@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OrderManagement.Api.Data;
+using OrderManagement.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+builder.Services.AddScoped<IOrderService, OrderService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -26,6 +29,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseAuthorization();
 

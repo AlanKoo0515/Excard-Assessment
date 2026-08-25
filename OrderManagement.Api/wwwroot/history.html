@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Order History</title>
+</head>
+<body>
+  <h1>Order History</h1>
+  <p>
+    <a href="/index.html">Products</a> |
+    <a href="/order.html">Place an order</a>
+  </p>
+
+  <div id="orders-container">Loading...</div>
+
+  <script>
+    fetch('/api/orders')
+      .then(res => res.json())
+      .then(orders => {
+        const container = document.getElementById('orders-container');
+
+        if (orders.length === 0) {
+          container.innerHTML = '<p>No orders have been submitted yet.</p>';
+          return;
+        }
+
+        container.innerHTML = orders.map(order => {
+          const rows = order.items.map(item => `
+            <tr>
+              <td>${item.productName}</td>
+              <td>${item.quantity}</td>
+              <td>${item.unitPrice.toFixed(2)}</td>
+              <td>${item.lineTotal.toFixed(2)}</td>
+            </tr>
+          `).join('');
+
+          return `
+            <h2>Order #${order.id} — ${new Date(order.orderDate).toLocaleString()}</h2>
+            <table border="1" cellpadding="6" cellspacing="0">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Line Total</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <p><strong>Order total: ${order.totalAmount.toFixed(2)}</strong></p>
+            <hr>
+          `;
+        }).join('');
+      })
+      .catch(err => {
+        document.getElementById('orders-container').textContent = `Failed to load orders: ${err}`;
+      });
+  </script>
+</body>
+</html>
