@@ -90,7 +90,7 @@ Three tables, matching the requirement exactly:
 - **Orders** — `Id, OrderDate`
 - **OrderItems** — `Id, OrderId (FK), ProductId (FK), Quantity, UnitPrice`
 
-`OrderItems.UnitPrice` is a copy of the product's price *at the time of the order*,
+`OrderItems.UnitPrice` is a copy of the product's price _at the time of the order_,
 not a live join to `Products.Price` — so historical orders stay accurate even if a
 product's price changes later. `OrderId` cascades on delete (deleting an order deletes
 its items); `ProductId` is restricted (a product referenced by an order can't be
@@ -99,6 +99,7 @@ deleted out from under it).
 ## Validation (Part C)
 
 Client-side (in `order.html`, before the request is even sent):
+
 - a product must be selected
 - quantity must be a positive whole number (`Number.isInteger(quantity) && quantity > 0`)
 - quantity (plus whatever of that product is already in the cart) can't exceed the
@@ -106,10 +107,11 @@ Client-side (in `order.html`, before the request is even sent):
 
 Server-side (defense in depth — the client-side checks above are a convenience, not a
 security boundary):
+
 - `CreateOrderItemDto.Quantity` has a `[Range(1, int.MaxValue)]` data annotation, checked
   via `ModelState` before the request reaches business logic
 - `OrderService.CreateOrderAsync` re-checks quantity > 0, checks that every submitted
-  `ProductId` actually exists in the database, and checks each product's *total* requested
+  `ProductId` actually exists in the database, and checks each product's _total_ requested
   quantity (summed across items, in case the same product appears twice) against its
   current `StockQuantity` — all things no data annotation can express, since they need a
   DB lookup. Each returns a clear, specific error message.
@@ -133,7 +135,7 @@ empty). An order with nothing in it has no meaning to persist.
 
 **Duplicate submission:** handled at the UI level only — the submit button is disabled the
 instant it's clicked, so a double-click or a slow response can't fire a second request.
-I deliberately did *not* add server-side de-duplication (e.g. an idempotency key, or
+I deliberately did _not_ add server-side de-duplication (e.g. an idempotency key, or
 rejecting an order that looks identical to one just submitted). Reasoning: there's no
 login/session in this system, so there's no reliable way to tell "the same order submitted
 twice by accident" apart from "the user genuinely wants to place two identical orders back
@@ -166,7 +168,7 @@ EF Core itself.
 
 - No authentication: any visitor can place an order and view history, per the spec ("no
   login/authentication").
-- No stock *management*: placing an order does **not** decrement `StockQuantity` — there's
+- No stock _management_: placing an order does **not** decrement `StockQuantity` — there's
   no inventory tracking over time, per the spec ("no stock management"). An earlier
   version of this project did implement stock deduction; it was intentionally removed to
   match the final requirements. `StockQuantity` is validated, though: an order is rejected
@@ -179,11 +181,3 @@ EF Core itself.
 - Order quantities are per-product; adding the same product to an order twice in the UI
   merges into one line with a summed quantity, rather than creating two `OrderItems` rows
   for the same product.
-
-## Not finished / out of scope
-
-- No pagination on the order history page — fine for the assessment's scale, would need
-  addressing for a large order volume.
-- No editing/cancelling of an order after submission (not requested).
-- No product management UI (create/edit/delete products) — the spec only asks that
-  products be *displayed*, and explicitly excludes stock management, so this was left out.

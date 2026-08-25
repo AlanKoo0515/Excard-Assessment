@@ -1,0 +1,16 @@
+body {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+  font-family: sans-serif;
+}
+
+table {
+  margin: 0 auto;
+}
+
+form {
+  display: inline-block;
+  text-align: left;
+}
